@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <title>Cyber Snake — Validation des compétences</title>
 <style>
   :root {
@@ -569,10 +570,27 @@
     stopLoop();
     draw();
     var reasonEl = document.getElementById("gameover-reason");
-    reasonEl.innerHTML =
-      "Le serpent s'est mordu la queue !<br><br>" +
-      "Questions répondues : <b>" + state.questionIndex + "/" + TOTAL_QUESTIONS + "</b><br>" +
-      "Bonnes réponses : <b>" + state.correctCount + "</b>";
+    reasonEl.textContent = "";
+
+    var lineIntro = document.createElement("div");
+    lineIntro.textContent = "Le serpent s'est mordu la queue !";
+    reasonEl.appendChild(lineIntro);
+
+    var lineQuestions = document.createElement("div");
+    lineQuestions.style.marginTop = "14px";
+    lineQuestions.appendChild(document.createTextNode("Questions répondues : "));
+    var qStat = document.createElement("b");
+    qStat.textContent = state.questionIndex + "/" + TOTAL_QUESTIONS;
+    lineQuestions.appendChild(qStat);
+    reasonEl.appendChild(lineQuestions);
+
+    var lineScore = document.createElement("div");
+    lineScore.appendChild(document.createTextNode("Bonnes réponses : "));
+    var sStat = document.createElement("b");
+    sStat.textContent = String(state.correctCount);
+    lineScore.appendChild(sStat);
+    reasonEl.appendChild(lineScore);
+
     gameoverOverlay.classList.remove("hidden");
   }
 
