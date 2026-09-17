@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Snake — Validation des compétences</title>
+<style>
+  :root {
+    --bg: #060b12;
+    --panel: #0d1620;
+    --panel-border: #1c2e3d;
+    --accent: #39ff9e;
+    --accent-dim: #1f8a5a;
+    --danger: #ff4d5e;
+    --warn: #ffb020;
+    --text: #d7e7ef;
+    --text-dim: #7f97a6;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: radial-gradient(circle at 50% 0%, #0b1420 0%, #05090e 70%);
+    color: var(--text);
+    font-family: "Courier New", Consolas, monospace;
+    min-height: 100vh;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 12px 48px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-shadow: 0 0 10px rgba(57, 255, 158, 0.5);
+    margin: 8px 0 4px;
+    text-align: center;
+  }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 18px;
+    text-align: center;
+  }
+  .hud {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: 0.9rem;
+  }
+  .hud span.value {
+    color: var(--accent);
+    font-weight: bold;
+  }
+  .board-wrap {
+    position: relative;
+    border: 2px solid var(--panel-border);
+    border-radius: 6px;
+    box-shadow: 0 0 24px rgba(57, 255, 158, 0.08), inset 0 0 30px rgba(0,0,0,0.5);
+    background: #020508;
+  }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 10, 0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    gap: 14px;
+  }
+  .hidden { display: none !important; }
+  .btn {
+    background: linear-gradient(180deg, #12351f, #0a1f13);
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.08s ease, box-shadow 0.15s ease;
+    letter-spacing: 0.5px;
+  }
+  .btn:hover {
+    box-shadow: 0 0 14px rgba(57, 255, 158, 0.45);
+    transform: translateY(-1px);
+  }
+  .btn:active { transform: translateY(0); }
+  .instructions {
+    max-width: 380px;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .instructions b { color: var(--text); }
+
+  /* Question modal */
+  .quiz-box {
+    max-width: 420px;
+    width: 100%;
+  }
+  .quiz-category {
+    display: inline-block;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: var(--accent);
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+  .quiz-question {
+    font-size: 1.02rem;
+    margin: 0 0 18px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .quiz-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  .choice-btn {
+    background: #0b1a24;
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 11px 14px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .choice-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: #0f2531;
+  }
+  .choice-btn:disabled { cursor: default; }
+  .choice-btn.correct {
+    border-color: var(--accent);
+    background: rgba(57, 255, 158, 0.15);
+    color: var(--accent);
+  }
+  .choice-btn.wrong {
+    border-color: var(--danger);
+    background: rgba(255, 77, 94, 0.15);
+    color: var(--danger);
+  }
+  .quiz-feedback {
+    min-height: 20px;
+    font-size: 0.85rem;
+    margin-top: 12px;
+  }
+  .quiz-feedback.ok { color: var(--accent); }
+  .quiz-feedback.ko { color: var(--danger); }
+  .next-hint {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .result-title {
+    font-size: 1.3rem;
+    margin: 0;
+  }
+  .result-title.pass { color: var(--accent); text-shadow: 0 0 10px rgba(57,255,158,0.5); }
+  .result-title.fail { color: var(--warn); }
+  .result-score {
+    font-size: 2.4rem;
+    font-weight: bold;
+    color: var(--text);
+  }
+  .footer-note {
+    margin-top: 22px;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+  <h1>CYBER SNAKE</h1>
+  <div class="subtitle">Validation gamifiée des compétences — fin de module</div>
+
+  <div class="hud">
+    <div>Score jeu: <span class="value" id="hud-length">3</span></div>
+    <div>Question: <span class="value" id="hud-qnum">0</span>/10</div>
+    <div>Bonnes réponses: <span class="value" id="hud-score">0</span></div>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board" width="400" height="400"></canvas>
+
+    <div id="start-overlay" class="overlay">
+      <div class="instructions">
+        Dirige le serpent avec les <b>flèches</b> ou <b>Z Q S D</b> pour manger les briques.<br><br>
+        Chaque brique mangée met le jeu en pause et déclenche une <b>question de cybersécurité</b>
+        (IAM, GRC, SOC, Sécurité de l'IA).<br><br>
+        10 questions au total. <b>Plus de 8/10</b> bonnes réponses pour valider tes compétences !
+      </div>
+      <button class="btn" id="btn-start">▶ Démarrer</button>
+    </div>
+
+    <div id="quiz-overlay" class="overlay hidden">
+      <div class="quiz-box">
+        <span class="quiz-category" id="quiz-category">IAM</span>
+        <p class="quiz-question" id="quiz-question">Question ?</p>
+        <div class="quiz-choices" id="quiz-choices"></div>
+        <div class="quiz-feedback" id="quiz-feedback"></div>
+      </div>
+    </div>
+
+    <div id="gameover-overlay" class="overlay hidden">
+      <div class="instructions" id="gameover-reason"></div>
+      <button class="btn" id="btn-restart-early">↻ Rejouer</button>
+    </div>
+
+    <div id="result-overlay" class="overlay hidden">
+      <div class="result-title" id="result-title">Résultat</div>
+      <div class="result-score" id="result-score">0/10</div>
+      <div class="instructions" id="result-message"></div>
+      <button class="btn" id="btn-restart">↻ Rejouer</button>
+    </div>
+  </div>
+
+  <div class="footer-note">Jeu autonome — HTML / CSS / JavaScript, aucune dépendance externe.</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Question bank (10 questions, 4 domains) ----------
+  var QUESTION_BANK = [
+    {
+      category: "IAM",
+      question: "Qu'est-ce que le principe du moindre privilège ?",
+      correct: "Accorder à chaque utilisateur uniquement les droits strictement nécessaires à ses tâches",
+      close: "Donner un accès complet aux utilisateurs jugés « de confiance » pour simplifier la gestion",
+      wrong: "Partager le même mot de passe administrateur entre tous les employés"
+    },
+    {
+      category: "IAM",
+      question: "Qu'est-ce que l'authentification multi-facteurs (MFA) ?",
+      correct: "Vérifier l'identité d'un utilisateur via au moins deux facteurs différents (ex : mot de passe + code temporaire)",
+      close: "Utiliser deux mots de passe différents pour se connecter à un même compte",
+      wrong: "Se connecter deux fois de suite avec le même mot de passe"
+    },
+    {
+      category: "IAM",
+      question: "Que permet le SSO (Single Sign-On) ?",
+      correct: "S'authentifier une seule fois pour accéder ensuite à plusieurs applications",
+      close: "Utiliser un seul et même mot de passe pour tous ses comptes personnels",
+      wrong: "Se connecter uniquement le premier jour du mois"
+    },
+    {
+      category: "GRC",
+      question: "Que signifie l'acronyme GRC en sécurité de l'information ?",
+      correct: "Gouvernance, Risques et Conformité",
+      close: "Gestion des Ressources et des Contrôles informatiques",
+      wrong: "Groupe de Récupération Cloud"
+    },
+    {
+      category: "GRC",
+      question: "En quoi consiste une analyse de risques ?",
+      correct: "Identifier, évaluer et prioriser les risques pour décider des mesures de traitement adaptées",
+      close: "Lister uniquement les incidents de sécurité déjà survenus dans l'entreprise",
+      wrong: "Installer un antivirus sur tous les postes de l'entreprise"
+    },
+    {
+      category: "GRC",
+      question: "Que fournit la norme ISO/IEC 27001 ?",
+      correct: "Un cadre de management de la sécurité de l'information (SMSI) basé sur l'amélioration continue",
+      close: "Une garantie officielle que l'entreprise ne subira jamais de cyberattaque",
+      wrong: "Un remboursement automatique en cas de piratage informatique"
+    },
+    {
+      category: "SOC",
+      question: "Quel est le rôle principal d'un SOC (Security Operations Center) ?",
+      correct: "Surveiller, détecter et répondre en continu aux incidents de sécurité",
+      close: "Réaliser uniquement un audit de conformité une fois par an",
+      wrong: "Gérer les congés et les plannings des équipes informatiques"
+    },
+    {
+      category: "SOC",
+      question: "À quoi sert un SIEM ?",
+      correct: "Centraliser et corréler les journaux (logs) pour détecter des anomalies de sécurité",
+      close: "C'est un antivirus nouvelle génération installé sur chaque poste utilisateur",
+      wrong: "C'est un logiciel de messagerie interne sécurisé"
+    },
+    {
+      category: "Sécurité de l'IA",
+      question: "Qu'est-ce qu'une attaque par « prompt injection » sur un modèle d'IA ?",
+      correct: "Manipuler les instructions fournies au modèle via son entrée pour lui faire ignorer ses consignes initiales",
+      close: "Envoyer un très grand nombre de requêtes pour saturer le service (déni de service)",
+      wrong: "Installer un virus directement sur la carte graphique du serveur"
+    },
+    {
+      category: "Sécurité de l'IA",
+      question: "Pourquoi faut-il être vigilant sur les données envoyées à un assistant IA externe ?",
+      correct: "Des données sensibles ou confidentielles pourraient être exposées ou réutilisées hors du périmètre de l'entreprise",
+      close: "Cela peut légèrement ralentir la vitesse de réponse du modèle",
+      wrong: "Cela change la couleur de l'interface utilisateur"
+    }
+  ];
+
+  // ---------- Game constants ----------
+  var GRID = 20;
+  var CELL = 20;
+  var TICK_MS = 140;
+
+  var canvas = document.getElementById("board");
+  var ctx = canvas.getContext("2d");
+
+  var startOverlay = document.getElementById("start-overlay");
+  var quizOverlay = document.getElementById("quiz-overlay");
+  var gameoverOverlay = document.getElementById("gameover-overlay");
+  var resultOverlay = document.getElementById("result-overlay");
+
+  var hudLength = document.getElementById("hud-length");
+  var hudQnum = document.getElementById("hud-qnum");
+  var hudScore = document.getElementById("hud-score");
+
+  var quizCategory = document.getElementById("quiz-category");
+  var quizQuestion = document.getElementById("quiz-question");
+  var quizChoices = document.getElementById("quiz-choices");
+  var quizFeedback = document.getElementById("quiz-feedback");
+
+  var TOTAL_QUESTIONS = 10;
+
+  var state = null;
+  var loopHandle = null;
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  function freshState() {
+    var startX = Math.floor(GRID / 2);
+    var startY = Math.floor(GRID / 2);
+    return {
+      snake: [
+        { x: startX, y: startY },
+        { x: startX - 1, y: startY },
+        { x: startX - 2, y: startY }
+      ],
+      dir: { x: 1, y: 0 },
+      pendingDir: { x: 1, y: 0 },
+      food: null,
+      questions: shuffle(QUESTION_BANK).slice(0, TOTAL_QUESTIONS),
+      questionIndex: 0,
+      correctCount: 0,
+      paused: false,
+      finished: false
+    };
+  }
+
+  function randomFood(snake) {
+    var free = [];
+    for (var x = 0; x < GRID; x++) {
+      for (var y = 0; y < GRID; y++) {
+        var occupied = snake.some(function (s) { return s.x === x && s.y === y; });
+        if (!occupied) free.push({ x: x, y: y });
+      }
+    }
+    return free[Math.floor(Math.random() * free.length)];
+  }
+
+  function updateHud() {
+    hudLength.textContent = state.snake.length;
+    hudQnum.textContent = state.questionIndex;
+    hudScore.textContent = state.correctCount;
+  }
+
+  function draw() {
+    ctx.fillStyle = "#020508";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // subtle grid
+    ctx.strokeStyle = "rgba(57, 255, 158, 0.05)";
+    ctx.lineWidth = 1;
+    for (var g = 0; g <= GRID; g++) {
+      ctx.beginPath();
+      ctx.moveTo(g * CELL, 0);
+      ctx.lineTo(g * CELL, canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, g * CELL);
+      ctx.lineTo(canvas.width, g * CELL);
+      ctx.stroke();
+    }
+
+    // food
+    if (state.food) {
+      ctx.fillStyle = "#ff4d5e";
+      ctx.shadowColor = "#ff4d5e";
+      ctx.shadowBlur = 10;
+      var fx = state.food.x * CELL + CELL / 2;
+      var fy = state.food.y * CELL + CELL / 2;
+      ctx.beginPath();
+      ctx.arc(fx, fy, CELL / 2 - 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // snake
+    state.snake.forEach(function (seg, i) {
+      ctx.fillStyle = i === 0 ? "#39ff9e" : "#1f8a5a";
+      ctx.shadowColor = "#39ff9e";
+      ctx.shadowBlur = i === 0 ? 8 : 0;
+      ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
+      ctx.shadowBlur = 0;
+    });
+  }
+
+  function step() {
+    if (state.paused || state.finished) return;
+
+    state.dir = state.pendingDir;
+    var head = state.snake[0];
+    var newHead = { x: head.x + state.dir.x, y: head.y + state.dir.y };
+
+    // wrap around edges
+    if (newHead.x < 0) newHead.x = GRID - 1;
+    if (newHead.x >= GRID) newHead.x = 0;
+    if (newHead.y < 0) newHead.y = GRID - 1;
+    if (newHead.y >= GRID) newHead.y = 0;
+
+    // self collision ends the run early
+    var hitsSelf = state.snake.some(function (s) { return s.x === newHead.x && s.y === newHead.y; });
+    if (hitsSelf) {
+      endEarly();
+      return;
+    }
+
+    state.snake.unshift(newHead);
+
+    if (state.food && newHead.x === state.food.x && newHead.y === state.food.y) {
+      onFoodEaten();
+    } else {
+      state.snake.pop();
+    }
+
+    updateHud();
+    draw();
+  }
+
+  function onFoodEaten() {
+    state.paused = true;
+    stopLoop();
+    updateHud();
+    draw();
+    showQuestion();
+  }
+
+  function showQuestion() {
+    var q = state.questions[state.questionIndex];
+    quizCategory.textContent = q.category;
+    quizQuestion.textContent = q.question;
+
+    var options = shuffle([
+      { text: q.correct, type: "correct" },
+      { text: q.close, type: "close" },
+      { text: q.wrong, type: "wrong" }
+    ]);
+
+    quizChoices.innerHTML = "";
+    quizFeedback.textContent = "";
+    quizFeedback.className = "quiz-feedback";
+
+    options.forEach(function (opt) {
+      var btn = document.createElement("button");
+      btn.className = "choice-btn";
+      btn.textContent = opt.text;
+      btn.addEventListener("click", function () { handleAnswer(opt, btn); });
+      quizChoices.appendChild(btn);
+    });
+
+    quizOverlay.classList.remove("hidden");
+  }
+
+  function handleAnswer(opt, clickedBtn) {
+    var buttons = quizChoices.querySelectorAll(".choice-btn");
+    buttons.forEach(function (b) { b.disabled = true; });
+
+    var isCorrect = opt.type === "correct";
+    if (isCorrect) {
+      clickedBtn.classList.add("correct");
+      quizFeedback.textContent = "✔ Bonne réponse !";
+      quizFeedback.className = "quiz-feedback ok";
+      state.correctCount++;
+    } else {
+      clickedBtn.classList.add("wrong");
+      quizFeedback.textContent = "✘ Réponse incorrecte.";
+      quizFeedback.className = "quiz-feedback ko";
+      // reveal the correct one
+      buttons.forEach(function (b) {
+        if (b.textContent === (state.questions[state.questionIndex].correct)) {
+          b.classList.add("correct");
+        }
+      });
+    }
+
+    state.questionIndex++;
+    updateHud();
+
+    setTimeout(function () {
+      quizOverlay.classList.add("hidden");
+
+      if (state.questionIndex >= TOTAL_QUESTIONS) {
+        finishGame();
+        return;
+      }
+
+      state.food = randomFood(state.snake);
+      state.paused = false;
+      draw();
+      startLoop();
+    }, 1100);
+  }
+
+  function finishGame() {
+    state.finished = true;
+    stopLoop();
+    draw();
+
+    var score = state.correctCount;
+    var titleEl = document.getElementById("result-title");
+    var scoreEl = document.getElementById("result-score");
+    var msgEl = document.getElementById("result-message");
+
+    scoreEl.textContent = score + "/" + TOTAL_QUESTIONS;
+
+    if (score > 8) {
+      titleEl.textContent = "Compétences validées";
+      titleEl.className = "result-title pass";
+      msgEl.textContent = "Félicitations, le score requis (> 8/10) est atteint.";
+    } else {
+      titleEl.textContent = "Compétences non validées";
+      titleEl.className = "result-title fail";
+      msgEl.textContent = "Il faut un score supérieur à 8/10 pour valider le module. Retente ta chance !";
+    }
+
+    resultOverlay.classList.remove("hidden");
+  }
+
+  function endEarly() {
+    state.finished = true;
+    stopLoop();
+    draw();
+    var reasonEl = document.getElementById("gameover-reason");
+    reasonEl.innerHTML =
+      "Le serpent s'est mordu la queue !<br><br>" +
+      "Questions répondues : <b>" + state.questionIndex + "/" + TOTAL_QUESTIONS + "</b><br>" +
+      "Bonnes réponses : <b>" + state.correctCount + "</b>";
+    gameoverOverlay.classList.remove("hidden");
+  }
+
+  function startLoop() {
+    stopLoop();
+    loopHandle = setInterval(step, TICK_MS);
+  }
+
+  function stopLoop() {
+    if (loopHandle) {
+      clearInterval(loopHandle);
+      loopHandle = null;
+    }
+  }
+
+  function startGame() {
+    state = freshState();
+    state.food = randomFood(state.snake);
+    startOverlay.classList.add("hidden");
+    quizOverlay.classList.add("hidden");
+    gameoverOverlay.classList.add("hidden");
+    resultOverlay.classList.add("hidden");
+    updateHud();
+    draw();
+    startLoop();
+  }
+
+  // ---------- Controls ----------
+  var KEY_MAP = {
+    ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 },
+    ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 },
+    KeyW: { x: 0, y: -1 }, KeyS: { x: 0, y: 1 },
+    KeyA: { x: -1, y: 0 }, KeyD: { x: 1, y: 0 },
+    KeyZ: { x: 0, y: -1 }, KeyQ: { x: -1, y: 0 }
+  };
+
+  document.addEventListener("keydown", function (e) {
+    if (!state || state.paused || state.finished) return;
+    var dir = KEY_MAP[e.code];
+    if (!dir) return;
+    // prevent reversing directly into itself
+    if (dir.x === -state.dir.x && dir.y === -state.dir.y) return;
+    state.pendingDir = dir;
+    e.preventDefault();
+  });
+
+  document.getElementById("btn-start").addEventListener("click", startGame);
+  document.getElementById("btn-restart").addEventListener("click", startGame);
+  document.getElementById("btn-restart-early").addEventListener("click", startGame);
+
+  // initial idle render
+  state = freshState();
+  draw();
+})();
+</script>
+</body>
+</html>
